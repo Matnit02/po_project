@@ -1,0 +1,12 @@
+Logowanie do aplikacji w celu weryfikacji danych, na których będzie można operować.
+
+Login:
+- nazwa uzytkownika
+- haslo
+
+Uzytkownikowi po utworzeniu konta będzie przypisywany losowo wygenerowany "User ID".
+W ten sposób identyfikowane będą wszystkie akcje użytkownika.
+
+- wyskakuje okno z logowaniem
+- uzytkownik wpisuje login i haslo
+- klasa zwraca USER ID lub blad
