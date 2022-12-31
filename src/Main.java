@@ -4,6 +4,5 @@ public class Main {
         LoginGUI lg = new LoginGUI();
         while ((userID = lg.getResult()) == null);
         System.out.println(userID);
-//        System.out.println(new LoginGUI());
     }
 }
