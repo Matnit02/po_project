@@ -3,13 +3,20 @@ import com.formdev.flatlaf.FlatDarkLaf;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
 
 public class LoginGUI {
-    private String result;
-    public LoginGUI() {
+    private CountDownLatch latch;
+    private String[] userData;
+//    private static Properties userData = new Properties();
+    public LoginGUI(CountDownLatch latch, String[] userData) {
+        this.latch = latch;
+        this.userData = userData;
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
@@ -20,18 +27,13 @@ public class LoginGUI {
     private void createAndShowGui() {
         FlatDarkLaf.registerCustomDefaultsSource("Themes");
         FlatLafDarkCustom.setup();
-//        try {
-//            UIManager.setLookAndFeel(new FlatDarkLaf());
-//        } catch (Exception e) {
-//            System.err.println("Failed to initialize LaF");
-//            System.exit(1);
-//        }
         UIManager.put( "Button.arc", 999 );
         UIManager.put( "TextComponent.arc", 999 );
-//        UIManager.put("Panel.background",new Color(26,30,36));
-//        UIManager.put("TextComponent.selectAllOnFocusPolicy","once");
-//        UIManager.put("TextComponent.selectAllOnMouseClick",true);
-//        UIManager.put("PasswordField.showRevealButton",true);
+        UIManager.put("JTextField.selectAllOnFocusPolicy", "once");
+        UIManager.put("TextComponent.selectAllOnMouseClick", true);
+        UIManager.put("PasswordField.showCapsLock", true);
+        UIManager.put("PasswordField.showRevealButton", true);
+
         JFrame jf = new JFrame();
         jf.setVisible(true);
         jf.setResizable(false);
@@ -41,8 +43,6 @@ public class LoginGUI {
         jf.setLayout(new BoxLayout(jf.getContentPane(), BoxLayout.PAGE_AXIS));
 
         JPanel topPanel = new JPanel();
-//        topPanel.putClientProperty("Panel.background",new Color(26,30,36));
-//        topPanel.setBackground(new Color(26,30,36));
         topPanel.setPreferredSize(new Dimension(Integer.MAX_VALUE, 250));
         topPanel.setLayout(new GridBagLayout());
         GridBagConstraints constraints = new GridBagConstraints();
@@ -55,13 +55,14 @@ public class LoginGUI {
 
         JLabel LogoImage = new JLabel(new ImageIcon(Objects.requireNonNull(Main.class.getResource("Images/LogoTemp.png"))));
         topPanel.add(LogoImage,constraints);
+
         jf.add(topPanel);
 
         JPanel botPanel = new JPanel();
         botPanel.setPreferredSize(new Dimension(Integer.MAX_VALUE, 350));
         botPanel.setLayout(new GridBagLayout());
 
-        JTextField UserLogin = new JTextField("LOGIN");
+        JTextField userLogin = new JTextField("LOGIN");
         constraints.gridx = 0;
         constraints.gridy = 0;
         constraints.weightx = 0;
@@ -69,23 +70,16 @@ public class LoginGUI {
         constraints.ipadx = 100;
         constraints.ipady = 20;
         constraints.anchor = GridBagConstraints.PAGE_START;
-//        UserLogin.setForeground(Color.white);
-//        UserLogin.putClientProperty("JTextField.background",Color.RED);
-//        UserLogin.putClientProperty("TextField.border", BorderFactory.createLineBorder(Color.RED));
-//        UserLogin.putClientProperty("TextComponent.selectAllOnFocusPolicy","always");
-//        UserLogin.putClientProperty("TextComponent.selectAllOnMouseClick",true);
-//        UserLogin.setHorizontalAlignment(JTextField.CENTER);
         constraints.insets = new Insets(-100,0,0,0);
 
-        botPanel.add(UserLogin,constraints);
+        botPanel.add(userLogin,constraints);
 
-        JPasswordField UserPassword = new JPasswordField();
+        JPasswordField userPassword = new JPasswordField();
         constraints.gridy = 1;
         constraints.insets = new Insets(-50,0,0,0);
-        UserPassword.setForeground(Color.white);
-//        UserPassword.putClientProperty("PasswordField.showRevealButton",true);
-        UserPassword.setHorizontalAlignment(JTextField.CENTER);
-        botPanel.add(UserPassword,constraints);
+        userPassword.setForeground(Color.white);
+        userPassword.setHorizontalAlignment(JTextField.CENTER);
+        botPanel.add(userPassword,constraints);
 
         JButton loginButton = new JButton("LOG IN");
         constraints.gridy = 2;
@@ -93,24 +87,27 @@ public class LoginGUI {
         constraints.ipady = 10;
         constraints.insets = new Insets(5,0,0,0);
         loginButton.setForeground(Color.white);
-//        loginButton.putClientProperty("Button.borderWidth",20);
         loginButton.setHorizontalAlignment(JTextField.CENTER);
         botPanel.add(loginButton,constraints);
 
         jf.add(botPanel);
 
+        loginButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                setUserData(userLogin.getText(), String.valueOf(userPassword.getPassword()));
+                System.out.println("Button pressed");
+            }
+        });
+//        JUST TO TEST THINGS, NOT USED LATER IN FINAL VERSION
         jf.addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent e) {
-                setResult("Working");
+                latch.countDown();
             }
         });
     }
-
-    public String getResult() {
-        return result;
-    }
-
-    public void setResult(String result) {
-        this.result = result;
+    public void setUserData(String login, String password) {
+        userData[0] = login.isEmpty() ? null : login;
+        userData[1] = password.isEmpty() ? null : password;
     }
 }
