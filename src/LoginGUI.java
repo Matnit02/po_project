@@ -9,9 +9,7 @@ import java.awt.event.*;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
@@ -22,11 +20,11 @@ public class LoginGUI {
     private Connection connection;
     private boolean connectionEstablished = false;
     private CountDownLatch latch;
-    private String[] userData;
+    private int[] userID;
 //    private static Properties userData = new Properties();
-    public LoginGUI(CountDownLatch latch, String[] userData, Connection connection) {
+    public LoginGUI(CountDownLatch latch, int[] userID, Connection connection) {
         this.latch = latch;
-        this.userData = userData;
+        this.userID = userID;
         this.connection = connection;
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
             @Override
@@ -202,10 +200,11 @@ public class LoginGUI {
 
                 if (loginButton.getText().equals("Log in")) {
                     loginProcess(userLogin.getText(), String.valueOf(userPassword.getPassword()), jf);
-                } else {
-                    registerProcess(userLogin.getText(), String.valueOf(userPassword.getPassword()),
-                        String.valueOf(userSecondPassword.getPassword()), jf);
+                    return;
                 }
+
+                registerProcess(userLogin.getText(), String.valueOf(userPassword.getPassword()),
+                        String.valueOf(userSecondPassword.getPassword()), jf);
 
             }
         });
@@ -214,10 +213,6 @@ public class LoginGUI {
                 latch.countDown();
             }
         });
-    }
-    private void setUserData(String login, String password) {
-        userData[0] = login.isEmpty() ? null : login;
-        userData[1] = password.isEmpty() ? null : password;
     }
 
     private int connectToDatabase(JFrame frame) {
@@ -292,17 +287,69 @@ public class LoginGUI {
                     "Incorrectly set password", JOptionPane.WARNING_MESSAGE);
             return false;
         }
+        LOGGER.info("Password is accepted");
         return true;
     }
 
     private void loginProcess(String username, String password, JFrame frame) {
-        System.out.println("Nothing yet");
+        LOGGER.info("Trying to log in the user");
+        try (CallableStatement stmt = connection.prepareCall("{CALL check_user_credentials(?,?,?)}")) {
+            stmt.setString(1, username);
+            stmt.setString(2, password);
+            stmt.registerOutParameter(3, java.sql.Types.INTEGER);
+            stmt.execute();
+            userID[0] = stmt.getInt(3);
+        } catch (SQLException sqlException) {
+            LOGGER.fatal("Unable to access the database");
+            return;
+        }
+
+        if (userID[0] == 0) {
+            LOGGER.warn("Invalid username or password");
+            JOptionPane.showMessageDialog(frame, "Invalid username or password",
+                    "Unable to log in", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        LOGGER.info("Successful log in");
     }
     private void registerProcess(String username, String firstPassword, String secondPassword, JFrame frame) {
+        LOGGER.info("Trying to register the user");
         if (!passwordValid(firstPassword, secondPassword, frame)) {
             return;
         }
 
-        System.out.println("OK");
+        boolean usernameAlreadyUsed;
+        LOGGER.debug("Checking if username is not in use");
+        try (CallableStatement cs = connection.prepareCall("{call check_username_exists(?,?)}")) {
+            cs.setString(1, username);
+            cs.registerOutParameter(2, Types.BIT);
+            cs.execute();
+            usernameAlreadyUsed = cs.getBoolean(2);
+        } catch (SQLException sqlException) {
+            LOGGER.fatal("Unable to access the database");
+            return;
+        }
+
+        if (usernameAlreadyUsed) {
+            LOGGER.warn("Username already used");
+            JOptionPane.showMessageDialog(frame, "Username already used",
+                    "Username already used", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        System.out.println(usernameAlreadyUsed);
+        LOGGER.info("Username is not used, so OK");
+
+        LOGGER.debug("Trying to insert data into database");
+        try (CallableStatement cstmt = connection.prepareCall("{CALL insert_client(?, ?)}")) {
+            cstmt.setString(1, username);
+            cstmt.setString(2, firstPassword);
+            cstmt.execute();
+        } catch (SQLException sqlException) {
+            LOGGER.fatal("Unable to access the database");
+            return;
+        }
+        LOGGER.info("Data successfully inserted into database. User correctly created");
+        loginProcess(username, firstPassword, frame);
     }
 }

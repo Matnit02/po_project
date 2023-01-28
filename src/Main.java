@@ -6,14 +6,14 @@ import java.util.concurrent.CountDownLatch;
 
 public class Main {
     private static final Logger LOGGER = LogManager.getLogger(Main.class);
-    private static String[] user = new String[2];
+    private static int[] userID = new int[1];
     private static Connection connection;
     public static void main(String[] args) {
 
         CountDownLatch latch = new CountDownLatch(1);
         new Thread(() -> {
             LOGGER.debug("Creating LoginGUI class object");
-            LoginGUI loginGUI = new LoginGUI(latch, user, connection);
+            LoginGUI loginGUI = new LoginGUI(latch, userID, connection);
         }).start();
 
         try {
@@ -22,8 +22,6 @@ public class Main {
             e.printStackTrace();
         }
         System.out.println("Program continues");
-        System.out.println(user[0]);
-        System.out.println(user[1]);
-        System.out.println(user.length);
+        System.out.println(userID[0]);
     }
 }
