@@ -7,6 +7,9 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="flatlaf-3.0" level="project" />
+    <orderEntry type="library" exported="" name="flatlaf-3.0" level="project" />
+    <orderEntry type="library" exported="" name="mssql-jdbc-11.2.3.jre17" level="project" />
+    <orderEntry type="library" exported="" name="log4j-core-2.19.0" level="project" />
+    <orderEntry type="library" exported="" name="log4j-api-2.19.0" level="project" />
   </component>
 </module>

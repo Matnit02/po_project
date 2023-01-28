@@ -1,30 +1,49 @@
 import Themes.FlatLafDarkCustom;
 import com.formdev.flatlaf.FlatDarkLaf;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.awt.event.*;
+import java.io.IOException;
+import java.net.URL;
+import java.net.URLConnection;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
 public class LoginGUI {
+    private static final Logger LOGGER = LogManager.getLogger(Main.class);
+    private JFrame jf;
+    private Connection connection;
+    private boolean connectionEstablished = false;
     private CountDownLatch latch;
     private String[] userData;
 //    private static Properties userData = new Properties();
-    public LoginGUI(CountDownLatch latch, String[] userData) {
+    public LoginGUI(CountDownLatch latch, String[] userData, Connection connection) {
         this.latch = latch;
         this.userData = userData;
+        this.connection = connection;
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
                 createAndShowGui();
+                if (internetConnection(jf)) {
+                    new Thread(() -> {
+                        connectToDatabase(jf);
+                    }).start();
+                } else {
+                    System.err.println("No internet connection");
+                }
             }
         });
     }
     private void createAndShowGui() {
+        LOGGER.debug("Creating Login GUI");
         FlatDarkLaf.registerCustomDefaultsSource("Themes");
         FlatLafDarkCustom.setup();
         UIManager.put( "Button.arc", 999 );
@@ -34,7 +53,7 @@ public class LoginGUI {
         UIManager.put("PasswordField.showCapsLock", true);
         UIManager.put("PasswordField.showRevealButton", true);
 
-        JFrame jf = new JFrame();
+        jf = new JFrame();
         jf.setVisible(true);
         jf.setResizable(false);
         jf.setSize(400, 600);
@@ -62,7 +81,7 @@ public class LoginGUI {
         botPanel.setPreferredSize(new Dimension(Integer.MAX_VALUE, 350));
         botPanel.setLayout(new GridBagLayout());
 
-        JTextField userLogin = new JTextField("LOGIN");
+        JTextField userLogin = new JTextField("Username");
         constraints.gridx = 0;
         constraints.gridy = 0;
         constraints.weightx = 0;
@@ -70,6 +89,7 @@ public class LoginGUI {
         constraints.ipadx = 100;
         constraints.ipady = 20;
         constraints.anchor = GridBagConstraints.PAGE_START;
+        userLogin.setHorizontalAlignment(JTextField.CENTER);
         constraints.insets = new Insets(-100,0,0,0);
 
         botPanel.add(userLogin,constraints);
@@ -77,37 +97,212 @@ public class LoginGUI {
         JPasswordField userPassword = new JPasswordField();
         constraints.gridy = 1;
         constraints.insets = new Insets(-50,0,0,0);
-        userPassword.setForeground(Color.white);
+//        userPassword.setForeground(Color.white);
         userPassword.setHorizontalAlignment(JTextField.CENTER);
         botPanel.add(userPassword,constraints);
 
-        JButton loginButton = new JButton("LOG IN");
-        constraints.gridy = 2;
+        JPasswordField userSecondPassword = new JPasswordField();
+        GridBagConstraints secondConstraints = new GridBagConstraints();
+        secondConstraints.gridx = 0;
+        secondConstraints.gridy = 2;
+        secondConstraints.weightx = 0;
+        secondConstraints.weighty = 0;
+        secondConstraints.ipadx = 100;
+        secondConstraints.ipady = 20;
+        secondConstraints.anchor = GridBagConstraints.PAGE_START;
+        secondConstraints.insets = new Insets(0,0,0,0);
+        userSecondPassword.setHorizontalAlignment(JTextField.CENTER);
+
+
+
+        JButton loginButton = new JButton("Log in");
+
+        constraints.gridy = 3;
         constraints.ipadx = 30;
         constraints.ipady = 10;
         constraints.insets = new Insets(5,0,0,0);
-        loginButton.setForeground(Color.white);
         loginButton.setHorizontalAlignment(JTextField.CENTER);
         botPanel.add(loginButton,constraints);
+
+        JLabel registerLabel = new JLabel("I want to create a new account");
+        constraints.gridy = 4;
+        constraints.ipadx = 0;
+        constraints.ipady = 0;
+        registerLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        registerLabel.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                userLogin.setText("Username");
+                userPassword.setText("");
+                userSecondPassword.setText("");
+                if (registerLabel.getText().equals("I want to create a new account")) {
+                    JOptionPane.showMessageDialog(jf, "Password needs to include at least 6 letters, one capital letter" +
+                            "and one number");
+                    loginButton.setText("Register");
+                    registerLabel.setText("I already have an account");
+                    botPanel.remove(loginButton);
+                    botPanel.add(userSecondPassword, secondConstraints);
+                    constraints.insets = new Insets(10,0,0,0);
+                    constraints.ipadx = 30;
+                    constraints.ipady = 10;
+                    botPanel.remove(registerLabel);
+                    botPanel.add(loginButton, constraints);
+                    constraints.insets = new Insets(50,0,0,0);
+                    constraints.ipadx = 0;
+                    constraints.ipady = 0;
+                    botPanel.add(registerLabel,constraints);
+                    jf.validate();
+                    jf.repaint();
+                    return;
+                }
+                loginButton.setText("Log in");
+                registerLabel.setText("I want to create a new account");
+                botPanel.remove(userSecondPassword);
+                botPanel.remove(loginButton);
+                botPanel.remove(registerLabel);
+                constraints.insets = new Insets(5,0,0,0);
+                constraints.ipadx = 30;
+                constraints.ipady = 10;
+                botPanel.add(loginButton, constraints);
+                constraints.insets = new Insets(45,0,0,0);
+                constraints.ipadx = 0;
+                constraints.ipady = 0;
+                botPanel.add(registerLabel,constraints);
+                jf.validate();
+                jf.repaint();
+
+            }
+        });
+        botPanel.add(registerLabel,constraints);
 
         jf.add(botPanel);
 
         loginButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                setUserData(userLogin.getText(), String.valueOf(userPassword.getPassword()));
-                System.out.println("Button pressed");
+                if (!connectionEstablished) {
+                    if (!internetConnection(jf)) {
+                        return;
+                    }
+
+                    CountDownLatch latchdatabaseConnection = new CountDownLatch(1);
+                    loginButton.setEnabled(false);
+                    new Thread(() -> {
+                        if (connectToDatabase(jf, latchdatabaseConnection) != 0) {
+                            return;
+                        }
+                    }).start();
+                    try {
+                        latchdatabaseConnection.await();
+                    } catch (InterruptedException err) {
+                        err.printStackTrace();
+                    }
+                    loginButton.setEnabled(true);
+                }
+
+                if (loginButton.getText().equals("Log in")) {
+                    loginProcess(userLogin.getText(), String.valueOf(userPassword.getPassword()), jf);
+                } else {
+                    registerProcess(userLogin.getText(), String.valueOf(userPassword.getPassword()),
+                        String.valueOf(userSecondPassword.getPassword()), jf);
+                }
+
             }
         });
-//        JUST TO TEST THINGS, NOT USED LATER IN FINAL VERSION
         jf.addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent e) {
                 latch.countDown();
             }
         });
     }
-    public void setUserData(String login, String password) {
+    private void setUserData(String login, String password) {
         userData[0] = login.isEmpty() ? null : login;
         userData[1] = password.isEmpty() ? null : password;
+    }
+
+    private int connectToDatabase(JFrame frame) {
+        LOGGER.debug("Connecting to the database");
+        Properties databaseLoginParameters = new Properties();
+        try {
+            databaseLoginParameters.load(LoginGUI.class.getClassLoader().getResourceAsStream("application.properties"));
+        } catch (IOException ioException) {
+            LOGGER.fatal("Unable to connect to the database. Connection parameters file \"application.properties\" not found");
+            JOptionPane.showMessageDialog(frame, "Unable to connect to the database. Connection parameters file \"application.properties\" not found",
+                    "Database connection", JOptionPane.ERROR_MESSAGE);
+            return 0;
+        }
+        try {
+            connection =DriverManager.getConnection(databaseLoginParameters.getProperty("url"));
+        } catch (SQLException sqlException) {
+            LOGGER.fatal("Unable to connect to the database. Connection could not be established");
+            JOptionPane.showMessageDialog(frame, "Unable to connect to the database. Connection could not be established",
+                    "Database connection", JOptionPane.ERROR_MESSAGE);
+            return 0;
+        }
+        this.connectionEstablished = true;
+        LOGGER.info("Successfully connected to the database");
+        return 1;
+    }
+    private int connectToDatabase(JFrame frame, CountDownLatch latch) {
+        int retValue = connectToDatabase(frame);
+        latch.countDown();
+        return retValue;
+    }
+
+
+    private boolean internetConnection(JFrame frame) {
+        LOGGER.debug("Checking Internet connection");
+        try {
+            URL url = new URL("http://www.google.com");
+            URLConnection internetConnection = url.openConnection();
+            internetConnection.connect();
+        } catch (Exception exception) {
+            LOGGER.fatal("No Internet connection");
+            JOptionPane.showMessageDialog(frame, "No Internet connection",
+                    "No Internet connection", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+        LOGGER.info("Internet connection: OK");
+        return true;
+    }
+
+    private boolean passwordValid(String firstPassword, String secondPassword, JFrame frame) {
+        LOGGER.debug("Checking if password can be accepted");
+        if (!firstPassword.equals(secondPassword)) {
+            LOGGER.warn("Passwords are not the same");
+            JOptionPane.showMessageDialog(frame, "Passwords are not the same",
+                    "Incorrectly set password", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        if (firstPassword.length() < 6) {
+            LOGGER.warn("Password needs to include at least 6 letters");
+            JOptionPane.showMessageDialog(frame, "Password needs to include at least one 6 letters",
+                    "Incorrectly set password", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        if (firstPassword.equals(firstPassword.toLowerCase())) {
+            LOGGER.warn("Password needs to include at least one uppercase letter");
+            JOptionPane.showMessageDialog(frame, "Password needs to include at least one uppercase letter",
+                    "Incorrectly set password", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        if (!firstPassword.matches(".*\\d.*")) {
+            LOGGER.warn("Password needs to include at least one number");
+            JOptionPane.showMessageDialog(frame, "Password needs to include at least one number!",
+                    "Incorrectly set password", JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        return true;
+    }
+
+    private void loginProcess(String username, String password, JFrame frame) {
+        System.out.println("Nothing yet");
+    }
+    private void registerProcess(String username, String firstPassword, String secondPassword, JFrame frame) {
+        if (!passwordValid(firstPassword, secondPassword, frame)) {
+            return;
+        }
+
+        System.out.println("OK");
     }
 }

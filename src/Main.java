@@ -1,11 +1,19 @@
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.sql.Connection;
 import java.util.concurrent.CountDownLatch;
 
 public class Main {
+    private static final Logger LOGGER = LogManager.getLogger(Main.class);
     private static String[] user = new String[2];
+    private static Connection connection;
     public static void main(String[] args) {
+
         CountDownLatch latch = new CountDownLatch(1);
         new Thread(() -> {
-            LoginGUI loginGUI = new LoginGUI(latch, user);
+            LOGGER.debug("Creating LoginGUI class object");
+            LoginGUI loginGUI = new LoginGUI(latch, user, connection);
         }).start();
 
         try {
