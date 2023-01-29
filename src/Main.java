@@ -7,7 +7,7 @@ import java.util.concurrent.CountDownLatch;
 public class Main {
     private static final Logger LOGGER = LogManager.getLogger(Main.class);
     private static int[] userID = new int[1];
-    private static Connection connection;
+    private static Connection[] connection = new Connection[1];
     public static void main(String[] args) {
 
         CountDownLatch latch = new CountDownLatch(1);
@@ -21,7 +21,11 @@ public class Main {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        System.out.println("Program continues");
-        System.out.println(userID[0]);
+        if (userID[0] == 0) {
+            LOGGER.fatal("Login GUI closed by the user. Shutting down the program");
+            System.exit(-1);
+        }
+
+        NoteList noteList = new NoteList(connection[0], userID[0]);
     }
 }

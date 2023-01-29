@@ -17,12 +17,13 @@ import java.util.concurrent.CountDownLatch;
 public class LoginGUI {
     private static final Logger LOGGER = LogManager.getLogger(Main.class);
     private JFrame jf;
-    private Connection connection;
+    private Connection[] connection;
+
     private boolean connectionEstablished = false;
     private CountDownLatch latch;
     private int[] userID;
 //    private static Properties userData = new Properties();
-    public LoginGUI(CountDownLatch latch, int[] userID, Connection connection) {
+    public LoginGUI(CountDownLatch latch, int[] userID, Connection[] connection) {
         this.latch = latch;
         this.userID = userID;
         this.connection = connection;
@@ -227,7 +228,7 @@ public class LoginGUI {
             return 0;
         }
         try {
-            connection =DriverManager.getConnection(databaseLoginParameters.getProperty("url"));
+            connection[0] =DriverManager.getConnection(databaseLoginParameters.getProperty("url"));
         } catch (SQLException sqlException) {
             LOGGER.fatal("Unable to connect to the database. Connection could not be established");
             JOptionPane.showMessageDialog(frame, "Unable to connect to the database. Connection could not be established",
@@ -293,7 +294,7 @@ public class LoginGUI {
 
     private void loginProcess(String username, String password, JFrame frame) {
         LOGGER.info("Trying to log in the user");
-        try (CallableStatement stmt = connection.prepareCall("{CALL check_user_credentials(?,?,?)}")) {
+        try (CallableStatement stmt = connection[0].prepareCall("{CALL check_user_credentials(?,?,?)}")) {
             stmt.setString(1, username);
             stmt.setString(2, password);
             stmt.registerOutParameter(3, java.sql.Types.INTEGER);
@@ -312,6 +313,8 @@ public class LoginGUI {
         }
 
         LOGGER.info("Successful log in");
+        frame.dispose();
+        latch.countDown();
     }
     private void registerProcess(String username, String firstPassword, String secondPassword, JFrame frame) {
         LOGGER.info("Trying to register the user");
@@ -321,7 +324,7 @@ public class LoginGUI {
 
         boolean usernameAlreadyUsed;
         LOGGER.debug("Checking if username is not in use");
-        try (CallableStatement cs = connection.prepareCall("{call check_username_exists(?,?)}")) {
+        try (CallableStatement cs = connection[0].prepareCall("{call check_username_exists(?,?)}")) {
             cs.setString(1, username);
             cs.registerOutParameter(2, Types.BIT);
             cs.execute();
@@ -341,7 +344,7 @@ public class LoginGUI {
         LOGGER.info("Username is not used, so OK");
 
         LOGGER.debug("Trying to insert data into database");
-        try (CallableStatement cstmt = connection.prepareCall("{CALL insert_client(?, ?)}")) {
+        try (CallableStatement cstmt = connection[0].prepareCall("{CALL insert_client(?, ?)}")) {
             cstmt.setString(1, username);
             cstmt.setString(2, firstPassword);
             cstmt.execute();
