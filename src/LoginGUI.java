@@ -22,7 +22,7 @@ public class LoginGUI {
     private boolean connectionEstablished = false;
     private CountDownLatch latch;
     private int[] userID;
-//    private static Properties userData = new Properties();
+    public LoginGUI(){}
     public LoginGUI(CountDownLatch latch, int[] userID, Connection[] connection) {
         this.latch = latch;
         this.userID = userID;
@@ -36,7 +36,7 @@ public class LoginGUI {
                         connectToDatabase(jf);
                     }).start();
                 } else {
-                    System.err.println("No internet connection");
+                    LOGGER.fatal("No internet connection");
                 }
             }
         });
@@ -71,7 +71,7 @@ public class LoginGUI {
         constraints.anchor = GridBagConstraints.PAGE_END;
         constraints.insets = new Insets(0,0,30,0);
 
-        JLabel LogoImage = new JLabel(new ImageIcon(Objects.requireNonNull(Main.class.getResource("Images/LogoTemp.png"))));
+        JLabel LogoImage = new JLabel(new ImageIcon(Objects.requireNonNull(Main.class.getResource("Images/logo.png"))));
         topPanel.add(LogoImage,constraints);
 
         jf.add(topPanel);
@@ -209,6 +209,7 @@ public class LoginGUI {
 
             }
         });
+        loginButton.getRootPane().setDefaultButton(loginButton);
         jf.addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent e) {
                 latch.countDown();
@@ -228,7 +229,7 @@ public class LoginGUI {
             return 0;
         }
         try {
-            connection[0] =DriverManager.getConnection(databaseLoginParameters.getProperty("url"));
+            connection[0] = DriverManager.getConnection(databaseLoginParameters.getProperty("url"));
         } catch (SQLException sqlException) {
             LOGGER.fatal("Unable to connect to the database. Connection could not be established");
             JOptionPane.showMessageDialog(frame, "Unable to connect to the database. Connection could not be established",
@@ -246,7 +247,7 @@ public class LoginGUI {
     }
 
 
-    private boolean internetConnection(JFrame frame) {
+    public boolean internetConnection(JFrame frame) {
         LOGGER.debug("Checking Internet connection");
         try {
             URL url = new URL("http://www.google.com");

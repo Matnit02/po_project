@@ -7,9 +7,13 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.sql.*;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 public class NoteList {
     private static final Logger LOGGER = LogManager.getLogger(Main.class);
@@ -63,11 +67,11 @@ public class NoteList {
         JPanel delPanel = new JPanel();
         JCheckBox deleteNoteCheckBox = new JCheckBox("");
         deleteNoteCheckBox.setPreferredSize(new Dimension(30,30));
-        JLabel delIcon = new JLabel(new ImageIcon("Images/bin.jpg"));
+        JLabel delIcon = new JLabel("DEL");
         delIcon.setPreferredSize(new Dimension(30,30));
         delPanel.setLayout(new BorderLayout());
-        delPanel.add(deleteNoteCheckBox, BorderLayout.WEST);
         delPanel.add(delIcon, BorderLayout.EAST);
+        delPanel.add(deleteNoteCheckBox, BorderLayout.WEST);
         topPanel.add(delPanel, BorderLayout.EAST);
         frame.getContentPane().add(topPanel, BorderLayout.NORTH);
 
@@ -114,7 +118,7 @@ public class NoteList {
                 okCancelPanel.add(okButton, BorderLayout.WEST);
                 topPanel.add(okCancelPanel,BorderLayout.EAST);
                 topPanel.revalidate();
-
+                topPanel.repaint();
 
                 cancelButton.addActionListener(new ActionListener() {
                     @Override
@@ -126,6 +130,7 @@ public class NoteList {
                         topPanel.remove(okCancelPanel);
                         topPanel.remove(titleInsert);
                         topPanel.revalidate();
+                        topPanel.repaint();
                     }
                 });
 
@@ -146,6 +151,7 @@ public class NoteList {
                             topPanel.remove(okCancelPanel);
                             topPanel.remove(titleInsert);
                             topPanel.revalidate();
+                            topPanel.repaint();
                             return;
                         }
 
@@ -155,9 +161,11 @@ public class NoteList {
                         topPanel.remove(okCancelPanel);
                         topPanel.remove(titleInsert);
                         topPanel.revalidate();
+                        topPanel.repaint();
                         loadNotesList(panel, buttonNoteIDMap);
                     }
                 });
+                okButton.getRootPane().setDefaultButton(okButton);
             }
         });
         loadNotesList(panel, buttonNoteIDMap);
@@ -175,19 +183,41 @@ public class NoteList {
         button.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                int noteID = buttonMap.get(button);
                 if (DELETE==true) {
-                    LOGGER.debug("Trying to delete pressed button");
-                    int noteID = buttonMap.get(button);
+                    LOGGER.debug("Trying to delete pressed note");
                     deleteNote(noteID);
                     loadNotesList(mainPanel, buttonMap);
                     return;
                 }
+                //TODO: Opening Note
+                LOGGER.debug("Trying to open pressed note");
+                CountDownLatch noteIsValid = new CountDownLatch(1);
+                new Thread(() -> {
+                    Note note = new Note(noteID, button.getText(), noteIsValid);
+                    try {
+                        noteIsValid.await();
+                    } catch (InterruptedException ex) {
+                        ex.printStackTrace();
+                    }
+                    boolean status = true;
+                    while (status) {
+                        try {
+                            Thread.sleep(10);
+                        } catch (InterruptedException ex) {
+                            ex.printStackTrace();
+                        }
+                        status = note.checkStatus();
+                    }
+                    loadNotesList(mainPanel,buttonMap);
+                }).start();
             }
         });
 
         jPanel.add(button);
         mainPanel.add(jPanel);
         mainPanel.revalidate();
+        mainPanel.repaint();
         LOGGER.info("Button successfully created");
     }
 
